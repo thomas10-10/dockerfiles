@@ -1,0 +1,92 @@
+#alpine-custom
+#FROM local/openrc-alpine 
+
+#OS 
+  FROM alpine:3.18.2
+
+  RUN apk add --no-cache openrc \
+      && rm -rf "/tmp/"* \
+      && echo 'rc_provide="loopback net"' >> /etc/rc.conf \
+      && sed -i -e 's/#rc_sys=""/rc_sys="lxc"/g' -e 's/^#\(rc_logger="YES"\)$/\1/' /etc/rc.conf \
+      && sed -i '/tty/d' /etc/inittab \
+      && sed -i 's/hostname $opts/# hostname $opts/g' /etc/init.d/hostname \
+      && sed -i 's/mount -t tmpfs/# mount -t tmpfs/g' /lib/rc/sh/init.sh
+
+  ENTRYPOINT ["/sbin/init"]
+
+## ADDUSER
+  RUN apk add --no-cache sudo \
+      && rm -rf "/tmp/"* \
+      && adduser alpine -s /usr/bin/fish -D \
+      && echo "alpine ALL=(ALL) ALL" > /etc/sudoers.d/alpine && chmod 0440 /etc/sudoers.d/alpine \
+      && echo "alpine:alpine" | chpasswd
+
+##FISH
+  RUN apk add --no-cache fish \
+      && rm -rf "/tmp/"* 
+  #create config
+#  RUN fish -c "ls" 
+#&& sed -i 's@root:x:0:0:root:/root:/bin/ash@root:x:0:0:root:/root:/usr/bin/fish@g' /etc/passwd
+
+
+## LUNARVIM
+  RUN apk add --no-cache yarn git python3 cargo neovim ripgrep alpine-sdk bash \
+      && rm -rf "/tmp/"* 
+  USER alpine
+      RUN LV_BRANCH='release-1.3/neovim-0.9' bash <(curl -s https://raw.githubusercontent.com/LunarVim/LunarVim/release-1.3/neovim-0.9/utils/installer/install.sh)
+      ENV PATH=$PATH:~/.local/bin
+  USER root
+
+## TMUX
+  RUN apk add --no-cache perl tmux \
+      && rm -rf "/tmp/"* 
+
+  USER alpine
+  ENV TERM=xterm-256color
+  RUN cd \
+      && git clone https://github.com/gpakosz/.tmux.git \
+      && ln -s -f .tmux/.tmux.conf \
+      && cp .tmux/.tmux.conf.local . 
+  USER root
+
+## LSD
+#/root/.cargo/bin/lsd
+  USER alpine
+  RUN cargo install lsd
+  ENV PATH=$PATH:~/.cargo/bin
+  USER root
+## PIP
+  RUN python -m ensurepip
+
+
+## NERDFONTS
+#  RUN apk add --no-cache font-terminus \
+#      && rm -rf "/tmp/"* 
+
+## ADD starship
+  RUN apk add --no-cache starship \
+      && rm -rf "/tmp/"* 
+
+  USER alpine
+  RUN fish -c "ls"
+  RUN echo 'starship init fish | source' >>  ~/.config/fish/config.fish
+  USER root
+
+## set fish path      
+  USER alpine
+  RUN echo 'fish_add_path ~/.cargo/bin' >>  ~/.config/fish/config.fish \
+      && echo 'fish_add_path ~/.local/bin' >>  ~/.config/fish/config.fish      
+  USER root
+
+## fish fzf
+  RUN apk add --no-cache bat fd fzf \
+      && rm -rf "/tmp/"* 
+
+  USER alpine
+  RUN fish -c 'curl -sL https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish | source && fisher install jorgebucaran/fisher'
+  #RUN fish -c 'fisher install jethrokuan/fzf'
+  RUN fish -c 'fisher install PatrickF1/fzf.fish'
+  USER root
+
+## change startup directory
+  RUN echo 'cd' >> "/home/alpine/.config/fish/config.fish"
