@@ -92,5 +92,6 @@
   RUN echo 'cd' >> "/home/alpine/.config/fish/config.fish"
 
 ## QTILE
-  RUN apk add libxcb cairo && rm -rf "/tmp/"* 
+  # obligatory dependencies
+  RUN apk add libxcb cairo pango glib gdk-pixbuf && rm -rf "/tmp/"* 
   RUN pip3 install git+https://github.com/qtile/qtile
